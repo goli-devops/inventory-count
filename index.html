@@ -46,6 +46,15 @@ header .stamp{
   color:var(--text-dim); cursor:pointer; border-radius:4px;
 }
 .tab.active{color:var(--text); border-color:var(--accent-dim); background:var(--surface);}
+.userbadge{
+  display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--text-dim);
+}
+.userbadge b{color:var(--text); font-family:'IBM Plex Mono',monospace;}
+.logoutbtn{
+  padding:5px 11px; background:var(--surface-2); border:1px solid var(--border); color:var(--text-dim);
+  border-radius:4px; cursor:pointer; font-size:12px;
+}
+.logoutbtn:hover{color:var(--danger); border-color:var(--danger);}
 main{flex:1; display:flex; min-height:0; overflow:hidden;}
 .rail{
   width:230px; min-width:170px; border-right:1px solid var(--border); background:var(--surface);
@@ -112,15 +121,62 @@ td.actions{width:80px; text-align:right;}
 .overview-row .n{font-family:'IBM Plex Mono',monospace; color:var(--accent);}
 .sync{font-size:10.5px; color:var(--text-dim); margin-left:auto; align-self:center;}
 ::-webkit-scrollbar{width:8px;} ::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+
+/* audit log */
+.audittable td, .audittable th{font-size:12.5px;}
+.audittable td.ts{font-family:'IBM Plex Mono',monospace; color:var(--text-dim); white-space:nowrap;}
+.audittable td.user{font-family:'IBM Plex Mono',monospace; color:var(--accent); white-space:nowrap;}
+.audittable td.action{white-space:nowrap;}
+
+/* login overlay */
+#loginOverlay{
+  position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center;
+  z-index:100; padding:20px;
+}
+.loginbox{
+  width:100%; max-width:320px; background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:28px 24px;
+}
+.loginbox h2{margin:0 0 4px; font-size:18px; font-weight:600;}
+.loginbox .sub{font-size:12.5px; color:var(--text-dim); margin-bottom:20px;}
+.loginbox label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px; margin-top:14px;}
+.loginbox input{
+  width:100%; padding:10px 11px; background:var(--surface-2); border:1px solid var(--border);
+  color:var(--text); border-radius:4px; font-family:inherit; font-size:14px;
+}
+.loginbox button{
+  width:100%; margin-top:20px; padding:10px; background:var(--accent); color:#14181c; border:none;
+  border-radius:4px; font-weight:600; cursor:pointer; font-size:14px;
+}
+.loginerr{color:var(--danger); font-size:12.5px; margin-top:10px; min-height:14px;}
 </style>
 </head>
 <body>
+
+<div id="loginOverlay">
+  <div class="loginbox">
+    <h2>ICT Inventory Ledger</h2>
+    <div class="sub">Sign in to continue</div>
+    <label for="loginUser">Username</label>
+    <input id="loginUser" autocomplete="username" placeholder="Username">
+    <label for="loginPass">Password</label>
+    <input id="loginPass" type="password" autocomplete="current-password" placeholder="Password">
+    <button id="loginBtn">Sign in</button>
+    <div class="loginerr" id="loginErr"></div>
+  </div>
+</div>
+
 <header>
   <h1>ICT Inventory Ledger</h1>
   <span class="stamp mono">53 BRANCHES</span>
   <div class="tabs">
     <div class="tab active" id="tabBranch">By Branch</div>
     <div class="tab" id="tabAll">All Items</div>
+    <div class="tab" id="tabAudit">Audit Log</div>
+  </div>
+  <div class="userbadge">
+    <span>Signed in as <b id="userLabel">—</b></span>
+    <button class="logoutbtn" id="logoutBtn">Log out</button>
   </div>
 </header>
 <main>
@@ -133,8 +189,60 @@ td.actions{width:80px; text-align:right;}
 </main>
 
 <script>
+/* ---------- auth ---------- */
+const AUTH_USER = 'admin';
+const AUTH_PASS = 'Olympus101';
+let currentUser = null;
+
+function checkSession(){
+  try{ return sessionStorage.getItem('ictInvUser'); }catch(e){ return null; }
+}
+function setSession(u){
+  try{ sessionStorage.setItem('ictInvUser', u); }catch(e){}
+}
+function clearSession(){
+  try{ sessionStorage.removeItem('ictInvUser'); }catch(e){}
+}
+
+function showLogin(){
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginErr').textContent = '';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  setTimeout(()=>document.getElementById('loginUser').focus(), 0);
+}
+function hideLogin(){
+  document.getElementById('loginOverlay').style.display = 'none';
+}
+
+function attemptLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(u === AUTH_USER && p === AUTH_PASS){
+    currentUser = u;
+    setSession(u);
+    hideLogin();
+    document.getElementById('userLabel').textContent = currentUser;
+    logAudit('login', `${currentUser} signed in`);
+    boot();
+  } else {
+    document.getElementById('loginErr').textContent = 'Incorrect username or password.';
+  }
+}
+
+document.getElementById('loginBtn').onclick = attemptLogin;
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptLogin(); });
+document.getElementById('loginUser').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginPass').focus(); });
+document.getElementById('logoutBtn').onclick = ()=>{
+  logAudit('logout', `${currentUser} signed out`);
+  clearSession();
+  currentUser = null;
+  location.reload();
+};
+
+/* ---------- state ---------- */
 let db = null;
-let state = { branches: [] };
+let state = { branches: [], auditLog: [] };
 let selected = null;
 let view = 'branch';
 let saveTimer = null;
@@ -144,14 +252,55 @@ function defaultState(){
   for(let i=1;i<=53;i++){
     branches.push({ id:'b'+i, name:'Branch'+i, items:[] });
   }
-  return { branches };
+  return { branches, auditLog: [] };
 }
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
+/* ---------- audit ---------- */
+function logAudit(action, details){
+  if(!state.auditLog) state.auditLog = [];
+  state.auditLog.push({
+    ts: new Date().toISOString(),
+    user: currentUser || 'unknown',
+    action,
+    details
+  });
+  if(state.auditLog.length > 500){
+    state.auditLog = state.auditLog.slice(state.auditLog.length - 500);
+  }
+  persist();
+}
+
+function fmtTs(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleString();
+  }catch(e){ return iso; }
+}
+
+function renderAudit(){
+  const content = document.getElementById('content');
+  const log = (state.auditLog||[]).slice().reverse();
+  content.innerHTML = `
+    <h2>Audit Log</h2>
+    <div class="sub">Every logged-in action, most recent first (last 500 kept)</div>
+    ${log.length===0 ? '<div class="empty">No activity logged yet.</div>' : `
+    <table class="audittable">
+      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+      <tbody>
+        ${log.map(e=>`<tr><td class="ts">${escapeHtml(fmtTs(e.ts))}</td><td class="user">${escapeHtml(e.user)}</td><td class="action">${escapeHtml(e.action)}</td><td>${escapeHtml(e.details)}</td></tr>`).join('')}
+      </tbody>
+    </table>`}
+  `;
+}
+
+/* ---------- render ---------- */
 function render(){
   renderBranchList();
-  if(view==='all') renderOverview(); else renderBranch();
+  if(view==='all') renderOverview();
+  else if(view==='audit') renderAudit();
+  else renderBranch();
 }
 
 function renderBranchList(){
@@ -167,7 +316,12 @@ function renderBranchList(){
     row.querySelector('[data-a=edit]').onclick = (e)=>{
       e.stopPropagation();
       const name = prompt('Rename branch:', b.name);
-      if(name && name.trim()){ b.name = name.trim(); persist(); render(); }
+      if(name && name.trim() && name.trim()!==b.name){
+        const oldName = b.name;
+        b.name = name.trim();
+        logAudit('rename_branch', `Renamed branch "${oldName}" to "${b.name}"`);
+        render();
+      }
     };
     list.appendChild(row);
   });
@@ -176,6 +330,7 @@ function renderBranchList(){
 function setTabs(){
   document.getElementById('tabBranch').classList.toggle('active', view==='branch');
   document.getElementById('tabAll').classList.toggle('active', view==='all');
+  document.getElementById('tabAudit').classList.toggle('active', view==='audit');
 }
 
 function renderBranch(){
@@ -201,7 +356,12 @@ function renderBranch(){
   `;
   document.getElementById('editBranchName').onclick = ()=>{
     const name = prompt('Rename branch:', b.name);
-    if(name && name.trim()){ b.name = name.trim(); persist(); render(); }
+    if(name && name.trim() && name.trim()!==b.name){
+      const oldName = b.name;
+      b.name = name.trim();
+      logAudit('rename_branch', `Renamed branch "${oldName}" to "${b.name}"`);
+      render();
+    }
   };
   const tbody = document.getElementById('itemsBody');
   b.items.forEach(it=>{
@@ -211,15 +371,31 @@ function renderBranch(){
       <td class="actions"><button class="qtybtn" data-a="dec">−</button> <button class="qtybtn" data-a="inc">+</button></td>
       <td class="actions"><button class="del" data-a="del">remove</button></td>`;
     tr.querySelector('[data-a=rename]').onclick=()=>{
+      const oldName = it.name, oldQty = it.qty;
       const name = prompt('Rename item:', it.name);
       if(name && name.trim()) it.name = name.trim();
       const qty = prompt('Set quantity:', it.qty);
       if(qty!==null && !isNaN(Number(qty))) it.qty = Math.max(0, Number(qty));
-      persist(); render();
+      if(it.name!==oldName || Number(it.qty)!==Number(oldQty)){
+        logAudit('edit_item', `Edited "${oldName}" (qty ${oldQty}) → "${it.name}" (qty ${it.qty}) in ${b.name}`);
+      }
+      render();
     };
-    tr.querySelector('[data-a=inc]').onclick=()=>{ it.qty=Number(it.qty)+1; persist(); render(); };
-    tr.querySelector('[data-a=dec]').onclick=()=>{ it.qty=Math.max(0,Number(it.qty)-1); persist(); render(); };
-    tr.querySelector('[data-a=del]').onclick=()=>{ b.items=b.items.filter(x=>x!==it); persist(); render(); };
+    tr.querySelector('[data-a=inc]').onclick=()=>{
+      it.qty=Number(it.qty)+1;
+      logAudit('increment', `+1 "${it.name}" in ${b.name} → now ${it.qty}`);
+      render();
+    };
+    tr.querySelector('[data-a=dec]').onclick=()=>{
+      it.qty=Math.max(0,Number(it.qty)-1);
+      logAudit('decrement', `-1 "${it.name}" in ${b.name} → now ${it.qty}`);
+      render();
+    };
+    tr.querySelector('[data-a=del]').onclick=()=>{
+      b.items=b.items.filter(x=>x!==it);
+      logAudit('delete_item', `Removed "${it.name}" (qty ${it.qty}) from ${b.name}`);
+      render();
+    };
     tbody.appendChild(tr);
   });
   document.getElementById('addItemBtn').onclick = ()=>{
@@ -229,10 +405,15 @@ function renderBranch(){
     const qty = Number(qtyEl.value)||1;
     if(!name) return;
     const existing = b.items.find(x=>x.name.toLowerCase()===name.toLowerCase());
-    if(existing){ existing.qty = Number(existing.qty)+qty; }
-    else { b.items.push({ id:uid(), name, qty }); }
+    if(existing){
+      existing.qty = Number(existing.qty)+qty;
+      logAudit('add_item', `Added ${qty} to existing "${existing.name}" in ${b.name} → now ${existing.qty}`);
+    } else {
+      b.items.push({ id:uid(), name, qty });
+      logAudit('add_item', `Added new item "${name}" (qty ${qty}) to ${b.name}`);
+    }
     nameEl.value=''; qtyEl.value=1; nameEl.focus();
-    persist(); render();
+    render();
   };
 }
 
@@ -265,6 +446,7 @@ function persist(){
 
 document.getElementById('tabBranch').onclick = ()=>{ view='branch'; setTabs(); render(); };
 document.getElementById('tabAll').onclick = ()=>{ view='all'; setTabs(); render(); };
+document.getElementById('tabAudit').onclick = ()=>{ view='audit'; setTabs(); render(); };
 document.getElementById('branchSearch').oninput = renderBranchList;
 document.getElementById('addBranch').onclick = ()=>{
   const name = prompt('New branch name:');
@@ -272,10 +454,12 @@ document.getElementById('addBranch').onclick = ()=>{
   const b = { id:uid(), name:name.trim(), items:[] };
   state.branches.push(b);
   selected = b.id; view='branch'; setTabs();
-  persist(); render();
+  logAudit('add_branch', `Added branch "${b.name}"`);
+  render();
 };
 
-async function init(){
+/* ---------- boot ---------- */
+async function boot(){
   render();
   try{
     db = await claude.use('db');
@@ -285,6 +469,7 @@ async function init(){
       const doc = await db.doc('inventory/state').get();
       if(doc && doc.data && doc.data.branches && doc.data.branches.length){
         state = doc.data;
+        if(!state.auditLog) state.auditLog = [];
       } else {
         state = defaultState();
         await db.doc('inventory/state').set(state);
@@ -293,13 +478,25 @@ async function init(){
       state = defaultState();
     }
     db.doc('inventory/state').onSnapshot(doc=>{
-      if(doc && doc.data){ state = doc.data; render(); }
+      if(doc && doc.data){ state = doc.data; if(!state.auditLog) state.auditLog=[]; render(); }
     });
   } else {
     state = defaultState();
   }
   selected = state.branches[0] && state.branches[0].id;
   render();
+}
+
+function init(){
+  const existing = checkSession();
+  if(existing === AUTH_USER){
+    currentUser = existing;
+    document.getElementById('userLabel').textContent = currentUser;
+    hideLogin();
+    boot();
+  } else {
+    showLogin();
+  }
 }
 init();
 </script>
