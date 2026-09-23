@@ -8,16 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#14181c; --surface:#1b2027; --surface-2:#242a33; --border:#333a44;
-  --text:#e8e6df; --text-dim:#8b929c; --accent:#d4a24c; --accent-dim:#8a6a2f;
-  --danger:#c0564a; --ok:#7ea87a;
+  --bg:#14181c; --surface:#1c2229; --surface-2:#2a313b; --border:#3c4552;
+  --text:#f4f2ec; --text-dim:#aab1bb; --accent:#e3b25c; --accent-dim:#a17f3c;
+  --danger:#e06a5c; --ok:#8fc189;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:light){
   :root:not([data-theme="dark"]){
-    --bg:#f3f1ea; --surface:#fffefb; --surface-2:#ece8dd; --border:#d9d3c4;
-    --text:#20242a; --text-dim:#6b7178; --accent:#a9762f; --accent-dim:#c99a4d;
+    --bg:#f3f1ea; --surface:#fffefb; --surface-2:#eae5d6; --border:#c9c1ac;
+    --text:#181c21; --text-dim:#52585f; --accent:#8f6222; --accent-dim:#c99a4d;
   }
 }
 :root[data-theme="dark"]{ }
@@ -27,6 +27,7 @@ html,body{height:100%;margin:0;}
 body{
   background:var(--bg); color:var(--text);
   font-family:'IBM Plex Sans',system-ui,sans-serif;
+  font-size:14.5px; line-height:1.45;
   display:flex; flex-direction:column; min-height:100%;
 }
 .mono{font-family:'IBM Plex Mono',monospace;}
@@ -66,26 +67,29 @@ main{flex:1; display:flex; min-height:0; overflow:hidden;}
 }
 .branchlist{overflow-y:auto; flex:1;}
 .branchrow{
-  padding:9px 14px; font-size:13.5px; cursor:pointer; display:flex; justify-content:space-between;
-  border-bottom:1px solid var(--border); color:var(--text-dim);
+  padding:10px 14px; font-size:14px; cursor:pointer; display:flex; justify-content:space-between;
+  border-bottom:1px solid var(--border); color:var(--text);
 }
 .branchrow:hover{background:var(--surface-2);}
-.branchrow.active{background:var(--surface-2); color:var(--text); border-left:3px solid var(--accent); padding-left:11px;}
-.branchrow .cnt{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-dim);}
+.branchrow.active{background:var(--surface-2); color:var(--text); border-left:3px solid var(--accent); padding-left:11px; font-weight:600;}
+.branchrow .cnt{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-dim); min-width:20px; text-align:right;}
 .branchrow{align-items:center;}
 .branchrow .bname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:6px;}
-.branchrow .rowbtns{display:flex; align-items:center; gap:8px; flex-shrink:0;}
-.editbtn{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:12px; padding:2px;}
-.editbtn:hover{color:var(--accent);}
+.branchrow .rowbtns{display:flex; align-items:center; gap:6px; flex-shrink:0;}
+.editbtn{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:3px; border-radius:3px;}
+.editbtn:hover{color:var(--accent); background:var(--border);}
+.delbtn{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; padding:3px; border-radius:3px;}
+.delbtn:hover{color:var(--danger); background:var(--border);}
 .addbranch{
   padding:9px 14px; font-size:13px; color:var(--accent); cursor:pointer; border-top:1px solid var(--border);
 }
 .content{flex:1; overflow-y:auto; padding:22px 26px; max-width:900px;}
-.content h2{font-size:20px; margin:0 0 3px; font-weight:600;}
-.content h2 .editbtn{font-size:14px; vertical-align:middle;}
-td .editbtn{font-size:11px; opacity:.6;}
+.content h2{font-size:21px; margin:0 0 3px; font-weight:600; display:flex; align-items:center; gap:8px;}
+.content h2 .editbtn{font-size:15px;}
+.content h2 .delbtn{font-size:15px;}
+td .editbtn{font-size:12px; opacity:.75;}
 td .editbtn:hover{opacity:1;}
-.content .sub{font-size:12.5px; color:var(--text-dim); margin-bottom:18px;}
+.content .sub{font-size:13px; color:var(--text-dim); margin-bottom:18px;}
 .addrow{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
 .addrow input{
   padding:9px 11px; background:var(--surface); border:1px solid var(--border); color:var(--text);
@@ -99,24 +103,26 @@ td .editbtn:hover{opacity:1;}
 }
 table{width:100%; border-collapse:collapse;}
 th{
-  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim);
-  border-bottom:1px solid var(--border); padding:8px 6px; font-weight:500;
+  text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim);
+  border-bottom:1px solid var(--border); padding:9px 6px; font-weight:600;
 }
-td{padding:10px 6px; border-bottom:1px solid var(--border); font-size:14px;}
-td.qty{font-family:'IBM Plex Mono',monospace; text-align:right; width:70px;}
+td{padding:11px 6px; border-bottom:1px solid var(--border); font-size:14.5px; color:var(--text);}
+td.qty{font-family:'IBM Plex Mono',monospace; text-align:right; width:70px; font-weight:600;}
 td.actions{width:80px; text-align:right;}
 .qtybtn{
-  width:22px; height:22px; border:1px solid var(--border); background:var(--surface-2); color:var(--text);
-  border-radius:3px; cursor:pointer; font-size:13px; line-height:1;
+  width:24px; height:24px; border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+  border-radius:3px; cursor:pointer; font-size:14px; line-height:1; font-weight:600;
 }
-.del{color:var(--danger); cursor:pointer; font-size:12px; background:none; border:none; font-family:inherit;}
-.empty{color:var(--text-dim); font-size:13.5px; padding:30px 0; text-align:center;}
+.qtybtn:hover{border-color:var(--accent); color:var(--accent);}
+.del{color:var(--danger); cursor:pointer; font-size:12.5px; background:none; border:none; font-family:inherit; font-weight:500;}
+.del:hover{text-decoration:underline;}
+.empty{color:var(--text-dim); font-size:14px; padding:30px 0; text-align:center;}
 .total{
-  margin-top:16px; padding-top:12px; border-top:1px solid var(--border); font-size:13px; color:var(--text-dim);
+  margin-top:16px; padding-top:12px; border-top:1px solid var(--border); font-size:13.5px; color:var(--text-dim);
 }
-.total b{color:var(--accent); font-family:'IBM Plex Mono',monospace;}
+.total b{color:var(--accent); font-family:'IBM Plex Mono',monospace; font-size:14.5px;}
 .overview-row{
-  display:flex; justify-content:space-between; padding:9px 6px; border-bottom:1px solid var(--border); font-size:14px;
+  display:flex; justify-content:space-between; padding:10px 6px; border-bottom:1px solid var(--border); font-size:14.5px;
 }
 .overview-row .n{font-family:'IBM Plex Mono',monospace; color:var(--accent);}
 .sync{font-size:10.5px; color:var(--text-dim); margin-left:auto; align-self:center;}
@@ -311,7 +317,7 @@ function renderBranchList(){
     const total = b.items.reduce((s,it)=>s+Number(it.qty||0),0);
     const row = document.createElement('div');
     row.className = 'branchrow' + (b.id===selected?' active':'');
-    row.innerHTML = `<span class="bname">${escapeHtml(b.name)}</span><span class="rowbtns"><button class="editbtn" data-a="edit" title="Rename">✎</button><span class="cnt">${total}</span></span>`;
+    row.innerHTML = `<span class="bname">${escapeHtml(b.name)}</span><span class="rowbtns"><button class="editbtn" data-a="edit" title="Rename">✎</button><button class="delbtn" data-a="delbranch" title="Delete branch">🗑</button><span class="cnt">${total}</span></span>`;
     row.querySelector('.bname').onclick = ()=>{ selected=b.id; view='branch'; setTabs(); render(); };
     row.querySelector('[data-a=edit]').onclick = (e)=>{
       e.stopPropagation();
@@ -323,8 +329,26 @@ function renderBranchList(){
         render();
       }
     };
+    row.querySelector('[data-a=delbranch]').onclick = (e)=>{
+      e.stopPropagation();
+      deleteBranch(b);
+    };
     list.appendChild(row);
   });
+}
+
+function deleteBranch(b){
+  const itemCount = b.items.reduce((s,it)=>s+Number(it.qty||0),0);
+  const msg = itemCount>0
+    ? `Delete branch "${b.name}"? It has ${itemCount} units logged — this cannot be undone.`
+    : `Delete branch "${b.name}"? This cannot be undone.`;
+  if(!confirm(msg)) return;
+  state.branches = state.branches.filter(x=>x!==b);
+  logAudit('delete_branch', `Deleted branch "${b.name}" (had ${itemCount} units across ${b.items.length} item types)`);
+  if(selected===b.id){
+    selected = state.branches[0] && state.branches[0].id;
+  }
+  render();
 }
 
 function setTabs(){
@@ -340,7 +364,7 @@ function renderBranch(){
   selected = b.id;
   const total = b.items.reduce((s,it)=>s+Number(it.qty||0),0);
   content.innerHTML = `
-    <h2 id="branchTitle">${escapeHtml(b.name)} <button class="editbtn" id="editBranchName" title="Rename branch">✎</button></h2>
+    <h2 id="branchTitle">${escapeHtml(b.name)} <button class="editbtn" id="editBranchName" title="Rename branch">✎</button><button class="delbtn" id="deleteBranchBtn" title="Delete branch">🗑</button></h2>
     <div class="sub">ICT inventory for this branch</div>
     <div class="addrow">
       <input name="iname" placeholder="Item name (e.g. Laptop)">
@@ -363,6 +387,7 @@ function renderBranch(){
       render();
     }
   };
+  document.getElementById('deleteBranchBtn').onclick = ()=>{ deleteBranch(b); };
   const tbody = document.getElementById('itemsBody');
   b.items.forEach(it=>{
     const tr = document.createElement('tr');
