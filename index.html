@@ -63,11 +63,19 @@ main{flex:1; display:flex; min-height:0; overflow:hidden;}
 .branchrow:hover{background:var(--surface-2);}
 .branchrow.active{background:var(--surface-2); color:var(--text); border-left:3px solid var(--accent); padding-left:11px;}
 .branchrow .cnt{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-dim);}
+.branchrow{align-items:center;}
+.branchrow .bname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:6px;}
+.branchrow .rowbtns{display:flex; align-items:center; gap:8px; flex-shrink:0;}
+.editbtn{background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:12px; padding:2px;}
+.editbtn:hover{color:var(--accent);}
 .addbranch{
   padding:9px 14px; font-size:13px; color:var(--accent); cursor:pointer; border-top:1px solid var(--border);
 }
 .content{flex:1; overflow-y:auto; padding:22px 26px; max-width:900px;}
 .content h2{font-size:20px; margin:0 0 3px; font-weight:600;}
+.content h2 .editbtn{font-size:14px; vertical-align:middle;}
+td .editbtn{font-size:11px; opacity:.6;}
+td .editbtn:hover{opacity:1;}
 .content .sub{font-size:12.5px; color:var(--text-dim); margin-bottom:18px;}
 .addrow{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
 .addrow input{
@@ -154,8 +162,13 @@ function renderBranchList(){
     const total = b.items.reduce((s,it)=>s+Number(it.qty||0),0);
     const row = document.createElement('div');
     row.className = 'branchrow' + (b.id===selected?' active':'');
-    row.innerHTML = `<span>${escapeHtml(b.name)}</span><span class="cnt">${total}</span>`;
-    row.onclick = ()=>{ selected=b.id; view='branch'; setTabs(); render(); };
+    row.innerHTML = `<span class="bname">${escapeHtml(b.name)}</span><span class="rowbtns"><button class="editbtn" data-a="edit" title="Rename">✎</button><span class="cnt">${total}</span></span>`;
+    row.querySelector('.bname').onclick = ()=>{ selected=b.id; view='branch'; setTabs(); render(); };
+    row.querySelector('[data-a=edit]').onclick = (e)=>{
+      e.stopPropagation();
+      const name = prompt('Rename branch:', b.name);
+      if(name && name.trim()){ b.name = name.trim(); persist(); render(); }
+    };
     list.appendChild(row);
   });
 }
@@ -172,7 +185,7 @@ function renderBranch(){
   selected = b.id;
   const total = b.items.reduce((s,it)=>s+Number(it.qty||0),0);
   content.innerHTML = `
-    <h2>${escapeHtml(b.name)}</h2>
+    <h2 id="branchTitle">${escapeHtml(b.name)} <button class="editbtn" id="editBranchName" title="Rename branch">✎</button></h2>
     <div class="sub">ICT inventory for this branch</div>
     <div class="addrow">
       <input name="iname" placeholder="Item name (e.g. Laptop)">
@@ -186,13 +199,24 @@ function renderBranch(){
     ${b.items.length===0 ? '<div class="empty">No items logged yet — add one above.</div>' : ''}
     <div class="total">Total units in ${escapeHtml(b.name)}: <b>${total}</b></div>
   `;
+  document.getElementById('editBranchName').onclick = ()=>{
+    const name = prompt('Rename branch:', b.name);
+    if(name && name.trim()){ b.name = name.trim(); persist(); render(); }
+  };
   const tbody = document.getElementById('itemsBody');
   b.items.forEach(it=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${escapeHtml(it.name)}</td>
+    tr.innerHTML = `<td><span class="itemname">${escapeHtml(it.name)}</span> <button class="editbtn" data-a="rename" title="Rename item">✎</button></td>
       <td class="qty">${it.qty}</td>
       <td class="actions"><button class="qtybtn" data-a="dec">−</button> <button class="qtybtn" data-a="inc">+</button></td>
       <td class="actions"><button class="del" data-a="del">remove</button></td>`;
+    tr.querySelector('[data-a=rename]').onclick=()=>{
+      const name = prompt('Rename item:', it.name);
+      if(name && name.trim()) it.name = name.trim();
+      const qty = prompt('Set quantity:', it.qty);
+      if(qty!==null && !isNaN(Number(qty))) it.qty = Math.max(0, Number(qty));
+      persist(); render();
+    };
     tr.querySelector('[data-a=inc]').onclick=()=>{ it.qty=Number(it.qty)+1; persist(); render(); };
     tr.querySelector('[data-a=dec]').onclick=()=>{ it.qty=Math.max(0,Number(it.qty)-1); persist(); render(); };
     tr.querySelector('[data-a=del]').onclick=()=>{ b.items=b.items.filter(x=>x!==it); persist(); render(); };
